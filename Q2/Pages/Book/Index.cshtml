@@ -1,0 +1,64 @@
+@page "/Book"
+@model Q2.Pages.Book.IndexModel
+@{
+    ViewData["Title"] = "List of books";
+}
+<h1 id="h1_listTitle">List of books</h1>
+
+<form method="get" action="/Book" id="form_filterBook">
+    <label id="lbl_filterByAuthor" for="sl_authors">Filter by author: </label>
+    <select id="sl_authors" name="authorId">
+        @if (Model.SelectedAuthorId == 0)
+        {
+            <option id="op_0" value="0" selected>All authors</option>
+        }
+        else
+        {
+            <option id="op_0" value="0">All authors</option>
+        }
+        @foreach (var auth in Model.Authors)
+        {
+            if (Model.SelectedAuthorId == auth.AuthorId)
+            {
+                <option id="op_@auth.AuthorId" value="@auth.AuthorId" selected>@auth.Name</option>
+            }
+            else
+            {
+                <option id="op_@auth.AuthorId" value="@auth.AuthorId">@auth.Name</option>
+            }
+        }
+    </select>
+    <input type="submit" id="bt_filter" value="Filter" />
+</form>
+
+<table id="tbl_books" border="1">
+    <thead>
+        <tr id="tr_header">
+            <th id="th_bookId">BookId</th>
+            <th id="th_title">Title</th>
+            <th id="th_publicationYear">Publication Year</th>
+            <th id="th_authors">Authors</th>
+            <th id="th_action">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var book in Model.Books)
+        {
+            <tr id="tr_book_@book.BookId">
+                <td id="td_bookId_@book.BookId">@book.BookId</td>
+                <td id="td_title_@book.BookId">@book.Title</td>
+                <td id="td_publicationYear_@book.BookId">@book.PublicationYear</td>
+                <td id="td_authors_@book.BookId">
+                    @foreach (var ba in book.BookAuthors ?? Enumerable.Empty<BookAuthorLinkDto>())
+                    {
+                        var displayName = ba.Author?.Name ?? string.Empty;
+                        <div id="div_@(book.BookId)_@(ba.AuthorId)">@displayName</div>
+                    }
+                </td>
+                <td id="td_action_@book.BookId">
+                    <a id="a_@book.BookId" href="/Book/@book.BookId">View Authors</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

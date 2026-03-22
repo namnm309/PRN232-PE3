@@ -1,0 +1,31 @@
+@page "/Book/{bookId:int}"
+@model Q2.Pages.Book.DetailModel
+@{
+    ViewData["Title"] = "Book's detail";
+}
+<h1 id="h1_detailTitle">Book's detail</h1>
+
+<p id="p_rowBookId">BookId: <span id="span_@Model.Book.BookId">@Model.Book.BookId</span></p>
+<p id="p_rowTitle">Title: <span id="span_@Model.Book.Title">@Model.Book.Title</span></p>
+<p id="p_rowPublicationYear">Publication year: <span id="span_@Model.Book.PublicationYear">@Model.Book.PublicationYear</span></p>
+
+<h2 id="h2_authorsSection">Authors:</h2>
+<table id="tbl_authors" border="1">
+    <thead>
+        <tr id="tr_authorsHeader">
+            <th id="th_authorId">AuthorId</th>
+            <th id="th_authorName">AuthorName</th>
+            <th id="th_birthYear">BirthYear</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var a in Model.Book.BookAuthors ?? Enumerable.Empty<BookAuthorFlatDto>())
+        {
+            <tr id="tr_author_@a.AuthorId">
+                <td id="td_authorId_@a.AuthorId">@a.AuthorId</td>
+                <td id="td_authorName_@a.AuthorId">@a.Name</td>
+                <td id="td_birthYear_@a.AuthorId">@a.BirthYear</td>
+            </tr>
+        }
+    </tbody>
+</table>

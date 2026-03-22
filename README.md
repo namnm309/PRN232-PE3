@@ -1,147 +1,122 @@
-# Hướng dẫn chạy PE — Câu 1 (Q1) và Câu 2 (Q2)
+# Hướng dẫn làm bài — Câu 1 (Web API) và Câu 2 (Razor + HttpClient)
 
-Tài liệu này mô tả **từng bước** để cấu hình, build và chạy hai project trong solution `PE_PRN232_GivenSolution`.
-
----
-
-## Yêu cầu chung
-
-| Thành phần | Ghi chú |
-|------------|---------|
-| **.NET SDK** | 8.0 trở lên (`dotnet --version`) |
-| **SQL Server** | Chỉ **bắt buộc cho Q1** (Entity Framework Core + SQL Server) |
-| **IDE** | Visual Studio 2022 hoặc VS Code / Rider (tuỳ chọn) |
+Tài liệu này mô tả **trình tự code** thường gặp trong đề PE PRN232 (API + client), để bạn đối chiếu với **wording đề** chứ không phải hướng dẫn cài đặt môi trường hay lệnh `dotnet run`.
 
 ---
 
-## Câu 1 — Q1 (Web API + SQL Server)
+## Câu 1 — ASP.NET Core Web API + Entity Framework + SQL Server
 
-Q1 là **ASP.NET Core Web API** dùng **DbContext** (`LibraryContext`) kết nối SQL Server qua connection string `MyCnn` trong `appsettings.json`.
+### 1. Khởi tạo pipeline (`Program.cs`)
 
-### Bước 1: Chuẩn bị database
+1. Đăng ký **DbContext** với connection string từ cấu hình (ví dụ `builder.Configuration.GetConnectionString("MyCnn")`) — **giữ đúng tên key** nếu đề/ghi chú trong solution quy định.
+2. `AddControllers()`; nếu đề yêu cầu **XML** thêm `AddXmlSerializerFormatters()`.
+3. (Tuỳ đề) `AddEndpointsApiExplorer()` + `AddSwaggerGen()` để test nhanh.
+4. Sau `var app = builder.Build()`: bật Swagger nếu dùng; **`app.MapControllers()`** — không quên thì controller không ánh xạ.
+5. Không chèn middleware thừa làm thay đổi thứ tự trước `MapControllers` nếu không cần.
 
-1. Cài **SQL Server** (Express / Developer / LocalDB) và bật SQL Server Authentication nếu dùng `Uid`/`Pwd`.
-2. Tạo **database** trống (hoặc dùng database đã có schema khớp đề bài / script giảng viên).
-3. Cập nhật chuỗi kết nối trong [`Q1/appsettings.json`](Q1/appsettings.json) tại `ConnectionStrings:MyCnn`:
-   - Đổi `Server=...` cho đúng instance SQL trên máy bạn (ví dụ `localhost`, `.\SQLEXPRESS`, `NAMPC\NAMPC`, …).
-   - Đổi `Database=...` nếu cần.
-   - Đổi `Uid` / `Pwd` (hoặc dùng Windows Authentication và chỉnh connection string cho phù hợp).
+### 2. Cấu hình kết nối CSDL (`appsettings.json`)
 
-**Lưu ý:** Comment trong file nhắc **không đổi tên key** `MyCnn` nếu đề / code đang tham chiếu đúng key đó.
+1. Thêm `ConnectionStrings` với **đúng tên** mà code đọc (ví dụ `MyCnn`).
+2. Chuỗi kết nối trỏ tới SQL Server instance và database theo **script/đề** (tên DB, login, `TrustServerCertificate` nếu dev).
 
-### Bước 2: Migration / tạo bảng (nếu đề yêu cầu)
+### 3. Tầng dữ liệu
 
-- Nếu project có migration: mở terminal tại thư mục `Q1` và chạy (ví dụ):
+1. **Models**: class map bảng (`Book`, `Author`, `BookCopy`, …) — property + khóa, quan hệ `virtual` nếu dùng Include/navigation.
+2. **DbContext**: `DbSet<>` cho từng entity; `OnModelCreating` nếu đề có ràng buộc đặc biệt hoặc tên bảng khác.
+3. **Migration** (nếu đề cho phép scaffold): `Add-Migration` / `dotnet ef migrations add` rồi `Update-Database` — hoặc chạy script `.sql` có sẵn thay cho migration.
 
-  ```bash
-  dotnet ef database update
-  ```
+### 4. Controller và route
 
-  (Cần cài tool `dotnet-ef` nếu chưa có: `dotnet tool install --global dotnet-ef`.)
+1. Tạo class kế thừa `ControllerBase`, gắn `[ApiController]`.
+2. **`[Route("api")]`** hoặc `[Route("api/[controller]")]` — **bám sát đề**: ví dụ đề ghi `/api/books` thì route template + `[HttpGet("books")]` phải ra đúng đường dẫn (tránh nhầm `api` lặp hai lần).
+3. Inject `LibraryContext` (hoặc service) qua constructor.
+4. Mỗi action: `[HttpGet("...")]`, `[HttpPost("...")]`, `[FromQuery]`, `[FromBody]` đúng chỗ theo đề.
 
-- Nếu database đã được import từ script `.sql`, bỏ qua bước này.
+### 5. Logic nghiệp vụ và DTO
 
-### Bước 3: Build project Q1
+1. Tách **DTO** (request/response) khác entity nếu đề không trả nguyên bảng.
+2. Viết query bằng **LINQ** trên `_context` (Where, Select, Include, Count, …) đúng định nghĩa nghiệp vụ (ví dụ “available book”, “đang mượn”, phân trang).
+3. Trả về `Ok(data)`, `BadRequest()`, `NotFound()`, `StatusCode(400, …)` theo từng trường hợp đề mô tả.
 
-1. Đóng mọi instance **Q1** đang chạy (tránh lỗi khóa file `Q1.exe`).
-2. Trong Visual Studio: chọn project **Q1** → **Build** → **Build Q1**, hoặc terminal:
+### 6. Kiểm tra trước khi nộp
 
-   ```bash
-   dotnet build Q1/Q1.csproj
-   ```
-
-### Bước 4: Chạy và kiểm tra API
-
-1. Đặt **Startup Project** là **Q1** → **F5** hoặc **Ctrl+F5**.
-2. Mặc định profile `http` trong [`Q1/Properties/launchSettings.json`](Q1/Properties/launchSettings.json) dùng cổng **`http://localhost:5230`** (kiểm tra lại nếu bạn đổi).
-3. `Program.cs` redirect `/` sang **Swagger** — mở trình duyệt tại Swagger UI để gọi thử các controller (ví dụ `Books`, `Copies`).
-
-### Bước 5: Gỡ lỗi thường gặp (Q1)
-
-| Triệu chứng | Cách xử lý |
-|-------------|------------|
-| Không kết nối được SQL | Kiểm tra SQL Server đang chạy, firewall, đúng instance và tài khoản. |
-| Lỗi migration | Đảm bảo connection string đúng và user có quyền tạo/sửa bảng. |
-| MSB3021 / file bị khóa khi build | Dừng debug (**Shift+F5**), đóng `dotnet run`, hoặc Task Manager → kết thúc `Q1.exe`. |
+1. Đối chiếu **từng URL** trong đề với `[Route]` + `[HttpGet]`/`[HttpPost]`.
+2. Kiểm tra kiểu trả về và tên field JSON (PascalCase mặc định hoặc cấu hình camelCase nếu đề yêu cầu).
 
 ---
 
-## Câu 2 — Q2 (Razor Pages + HttpClient) và API mẫu GivenBooksAPI
+## Câu 2 — Razor Pages (hoặc MVC) + HttpClient gọi API có sẵn
 
-Q2 là **Razor Pages** gọi REST API qua **HttpClient**. Base URL lấy từ [`Q2/appsettings.json`](Q2/appsettings.json) — key **`GivenAPIBaseUrl`** (không đổi tên key theo yêu cầu đề).
+### 1. Cấu hình base URL API (`appsettings.json`)
 
-Trong solution có project **`GivenBooksAPI`**: API mẫu in-memory (sách / tác giả) chạy **`http://localhost:5100`**, khớp `GivenAPIBaseUrl` mặc định.
+1. Thêm key **`GivenAPIBaseUrl`** (hoặc đúng key đề giao — **không đổi tên** nếu đề cấm).
+2. Giá trị là URL gốc API (ví dụ `http://localhost:5100`), **không** gắn `/api/...` ở đây.
 
-### Bước 1: Giải phóng cổng 5100
+### 2. `Program.cs` (thường có đoạn cố định)
 
-- Chỉ một process được nghe **5100**. Nếu đang chạy project **`givenAPI`** (Movies) hoặc API khác trên 5100, **dừng** nó trước khi chạy **GivenBooksAPI**.
+1. Gọi **`Utilities.Initialize(builder.Configuration)`** — giữ nguyên nếu đề/template yêu cầu.
+2. `builder.Services.AddRazorPages()` (hoặc MVC tương ứng).
+3. `builder.Services.AddHttpClient()` — bắt buộc dùng HttpClient theo đề.
+4. `app.MapRazorPages()`; (tuỳ chọn) redirect `/` → `/Book`.
 
-### Bước 2: Chạy GivenBooksAPI (bắt buộc trước Q2)
+### 3. Ghép URL gọi API (`Utilities` hoặc trực tiếp trong PageModel)
 
-1. Trong Visual Studio: đặt **Startup Project** là **GivenBooksAPI** (hoặc click phải project → **Debug** → **Start New Instance**).
-2. Hoặc terminal:
+1. Đọc base URL từ config.
+2. Nếu đề yêu cầu **nối chuỗi bằng `+`**: dùng `baseUrl + "/api/..." + id` (không dùng kiểu ghép “ẩn” khác nếu đề cấm).
+3. Endpoint path **khớp API thật** (ví dụ `api/Books` vs `api/books/author`) — đối chiếu Swagger project **GivenAPIs** khi thi, không đoán theo tóm tắt ngắn.
 
-   ```bash
-   cd GivenBooksAPI
-   dotnet run
-   ```
+### 4. DTO khớp JSON API
 
-3. Xác nhận log kiểu: `Now listening on: http://localhost:5100`.
-4. (Tuỳ chọn) Mở Swagger: **http://localhost:5100/swagger** — thử `GET /api/authors`, `GET /api/Books`, v.v.
+1. Tạo class property trùng **tên field JSON** (thường camelCase từ ASP.NET Core API).
+2. Dùng `JsonSerializerOptions.PropertyNameCaseInsensitive = true` để tránh lệch hoa thường.
+3. Nếu API trả **`bookAuthors`** thay vì `authors`, thêm `[JsonPropertyName("bookAuthors")]` hoặc property tên đúng.
 
-### Bước 3: Cấu hình Q2 (nếu đổi cổng API)
+### 5. Trang danh sách (`/Book`)
 
-- Nếu bạn chạy API ở địa chỉ khác, sửa **giá trị** (không đổi tên key):
+1. File ví dụ `Pages/Book/Index.cshtml` + `Index.cshtml.cs`.
+2. `@page "/Book"` — URL **không** được thành `/Book/Index` nếu đề bắt đúng `/Book`.
+3. **PageModel**: inject `IHttpClientFactory`; trong `OnGetAsync(int? authorId)`:
+   - Gọi GET danh sách tác giả cho dropdown.
+   - Gọi GET danh sách sách (tất cả hoặc theo `authorId` từ query) — form filter dùng `method="get"` + `name="authorId"` khớp tham số.
+4. Deserialize bằng `System.Text.Json` (không bắt buộc Refit/RestSharp nếu đề cấm thư viện ngoài).
 
-  ```json
-  "GivenAPIBaseUrl": "http://localhost:5100"
-  ```
+### 6. Trang chi tiết (`/Book/{BookId}`)
 
-### Bước 4: Build và chạy Q2
+1. `@page "/Book/{bookId:int}"` để URL dạng `/Book/1`.
+2. `OnGetAsync(int bookId)`: GET `api/.../books/{bookId}` (đúng path API); `NotFound()` nếu 404.
+3. View hiển thị thông tin sách + bảng tác giả; DTO chi tiết có thể khác list (ví dụ `bookAuthors` phẳng).
 
-1. **Dừng** mọi instance Q2 đang chạy (tránh lỗi khóa `Q2.exe`).
-2. Build:
+### 7. Quy tắc HTML `id` (thường auto chấm)
 
-   ```bash
-   dotnet build Q2/Q2.csproj
-   ```
+1. Đối chiếu **bảng tóm tắt đề** từng thẻ: `td_{columnName}_{bookId}`, `div_{bookId}_{authorId}`, `a_{bookId}`, `sl_authors`, `op_0`, `op_{authorId}`, `bt_filter`, `span_...`, v.v.
+2. **Mọi** phần tử input/output có `id` nếu đề nói rõ — kể cả `label`, `form`, `th` nếu yêu cầu.
+3. Link trong bảng trỏ `href="/Book/@bookId"` đúng route Razor.
 
-3. Đặt **Startup Project** là **Q2** → **F5** / **Ctrl+F5**.
-4. Profile `http` trong [`Q2/Properties/launchSettings.json`](Q2/Properties/launchSettings.json) thường là **`http://localhost:5177`** (đổi nếu bạn sửa file).
-5. Trình duyệt mở `/` → redirect sang **`/Book`** (theo `Program.cs`).
+### 8. API mẫu trong solution (`GivenBooksAPI`)
 
-### Bước 5: Kiểm tra chức năng Q2
-
-1. Trang **Danh sách:** `/Book` — bảng sách, dropdown tác giả, **Filter**.
-2. Trang **Chi tiết:** bấm **View Authors** hoặc vào `/Book/1`, `/Book/2`, …
-
-### Bước 6: Gỡ lỗi thường gặp (Q2)
-
-| Triệu chứng | Cách xử lý |
-|-------------|------------|
-| **404** khi gọi API | Đảm bảo **GivenBooksAPI** đang chạy **trước** Q2; đúng URL trong `GivenAPIBaseUrl`. |
-| **HttpRequestException** tại `EnsureSuccessStatusCode` | API không chạy, sai URL, hoặc sai endpoint — mở Swagger trên 5100 để kiểm tra. |
-| MSB3021 khi build Q2 | Dừng Q2 đang debug, hoặc Task Manager → kết thúc `Q2.exe`. |
-| Hai API cùng cổng 5100 | Chỉ chạy **một** trong: `GivenBooksAPI` **hoặc** `givenAPI` (Movies). |
+- Project **GivenBooksAPI** chỉ để **bắt chước** shape endpoint/JSON khi ôn tập; khi thi, bám **project GivenAPIs** thật của giảng viên.
 
 ---
 
-## Chạy nhanh cả hai câu (gợi ý)
+## Checklist nhanh trước khi nộp
 
-1. **Terminal 1:** `cd GivenBooksAPI` → `dotnet run` (giữ cửa sổ mở).
-2. **Terminal 2 hoặc Visual Studio:** chạy **Q2** → mở `http://localhost:5177/Book` (hoặc cổng trong `launchSettings` của Q2).
-3. **Q1** độc lập: chỉ cần SQL Server + `appsettings` đúng → chạy Q1 → Swagger (cổng xem `Q1/Properties/launchSettings.json`).
+| Hạng mục | Câu 1 | Câu 2 |
+|----------|-------|-------|
+| Route API đúng đề | ✓ | ✓ (path gọi từ client) |
+| DB / HttpClient đúng yêu cầu | ✓ | ✓ |
+| DTO / JSON khớp | ✓ | ✓ |
+| `id` HTML đủ và đúng pattern | — | ✓ |
 
 ---
 
-## Cấu trúc thư mục liên quan (tham khảo)
+## Cấu trúc thư mục tham chiếu trong repo này
 
 ```
 PE_PRN232_GivenSolution/
-├── Q1/                 ← Web API + EF + SQL Server
-├── Q2/                 ← Razor Pages + HttpClient
-├── GivenBooksAPI/      ← API mẫu Books/Authors (test Q2)
-└── givenAPI/           ← API mẫu Movies (khác đề Q2; đừng nhầm cổng 5100)
+├── Q1/            Web API + EF (ví dụ BooksController, CopiesController)
+├── Q2/            Razor Pages + HttpClient + Utilities
+├── GivenBooksAPI/ API mẫu Books/Authors (ôn Q2)
+└── givenAPI/      API mẫu Movies (không dùng cho Q2)
 ```
 
-Nếu cần chỉnh sửa code theo đề thi chính thức, luôn đối chiếu **wording đề** (route API, tên key config) với từng file tương ứng.
+Khi làm bài thi, luôn **ưu tiên đề in phông** và **Swagger/API gốc** hơn mọi tóm tắt ngắn.

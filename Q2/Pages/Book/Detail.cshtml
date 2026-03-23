@@ -1,14 +1,24 @@
+@* bookId:int = chỉ nhận số nguyên, gõ chữ vào URL là 404 luôn *@
 @page "/Book/{bookId:int}"
 @model Q2.Pages.Book.DetailModel
+@using Q2.Models
 @{
-    ViewData["Title"] = "Book's detail";
+    Layout = null;
 }
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>Book's detail</title>
+</head>
+<body>
 <h1 id="h1_detailTitle">Book's detail</h1>
 
 <p id="p_rowBookId">BookId: <span id="span_@Model.Book.BookId">@Model.Book.BookId</span></p>
 <p id="p_rowTitle">Title: <span id="span_@Model.Book.Title">@Model.Book.Title</span></p>
 <p id="p_rowPublicationYear">Publication year: <span id="span_@Model.Book.PublicationYear">@Model.Book.PublicationYear</span></p>
 
+@* Phần dưới: danh sách tác giả gắn với cuốn sách (flat DTO từ API) *@
 <h2 id="h2_authorsSection">Authors:</h2>
 <table id="tbl_authors" border="1">
     <thead>
@@ -19,6 +29,7 @@
         </tr>
     </thead>
     <tbody>
+        @* Null-safe: API không trả BookAuthors thì vẫn render bảng rỗng, không boom *@
         @foreach (var a in Model.Book.BookAuthors ?? Enumerable.Empty<BookAuthorFlatDto>())
         {
             <tr id="tr_author_@a.AuthorId">
@@ -29,3 +40,5 @@
         }
     </tbody>
 </table>
+</body>
+</html>

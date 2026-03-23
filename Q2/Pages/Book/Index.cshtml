@@ -1,13 +1,25 @@
+@* Route: /Book — trang danh sách sách + filter theo author *@
 @page "/Book"
 @model Q2.Pages.Book.IndexModel
+@using Q2.Models
 @{
-    ViewData["Title"] = "List of books";
+    // Full HTML tay, không dùng _Layout (kiểu trang exam / đề hay yêu cầu vậy)
+    Layout = null;
 }
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>List of books</title>
+</head>
+<body>
 <h1 id="h1_listTitle">List of books</h1>
 
+@* GET /Book?authorId=... — submit là reload trang, không phải AJAX *@
 <form method="get" action="/Book" id="form_filterBook">
     <label id="lbl_filterByAuthor" for="sl_authors">Filter by author: </label>
     <select id="sl_authors" name="authorId">
+        @* 0 = "All" — phải selected đúng lúc để dropdown khớp với query hiện tại *@
         @if (Model.SelectedAuthorId == 0)
         {
             <option id="op_0" value="0" selected>All authors</option>
@@ -44,11 +56,13 @@
     <tbody>
         @foreach (var book in Model.Books)
         {
+            @* Mỗi dòng: id kiểu td_bookId_123 để auto test / inspect dễ *@
             <tr id="tr_book_@book.BookId">
                 <td id="td_bookId_@book.BookId">@book.BookId</td>
                 <td id="td_title_@book.BookId">@book.Title</td>
                 <td id="td_publicationYear_@book.BookId">@book.PublicationYear</td>
                 <td id="td_authors_@book.BookId">
+                    @* Co-author nhiều người thì mỗi ông một div *@
                     @foreach (var ba in book.BookAuthors ?? Enumerable.Empty<BookAuthorLinkDto>())
                     {
                         var displayName = ba.Author?.Name ?? string.Empty;
@@ -56,9 +70,12 @@
                     }
                 </td>
                 <td id="td_action_@book.BookId">
+                    @* Sang trang Detail — route /Book/{bookId} *@
                     <a id="a_@book.BookId" href="/Book/@book.BookId">View Authors</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
+</body>
+</html>

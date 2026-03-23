@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Q2.Models;
 
+// DTO tác giả — thường lấy từ GET api/authors để fill dropdown / hiển thị tên
 public class AuthorDto
 {
     public int AuthorId { get; set; }
@@ -9,25 +10,28 @@ public class AuthorDto
     public int BirthYear { get; set; }
 }
 
-/// <summary>Book row from GET /api/Books or GET /api/Books/Author/{id} — JSON uses bookAuthors + nested author.</summary>
+// Một dòng sách ở list: dùng cho GET /api/Books hoặc /api/Books/Author/{id}
+// JSON trả bookAuthors (camelCase) + mỗi phần tử có object Author lồng bên trong
 public class BookListDto
 {
     public int BookId { get; set; }
     public string Title { get; set; } = string.Empty;
     public int PublicationYear { get; set; }
 
+    // API gửi "bookAuthors" chứ không phải PascalCase — map thủ công cho khớp
     [JsonPropertyName("bookAuthors")]
     public List<BookAuthorLinkDto>? BookAuthors { get; set; }
 }
 
+// Bản ghi nối sách–tác giả kiểu “có nested Author” — list page hay dùng cái này
 public class BookAuthorLinkDto
 {
     public int BookId { get; set; }
     public int AuthorId { get; set; }
-    public AuthorDto? Author { get; set; }
+    public AuthorDto? Author { get; set; } // null nếu API không embed author (hiếm nhưng cứ null-safe)
 }
 
-/// <summary>Book from GET /api/Books/{id} — bookAuthors items are flat authorId, name, birthYear.</summary>
+// Chi tiết 1 cuốn: GET /api/Books/{id} — cùng field bookAuthors nhưng shape khác list (flat hơn)
 public class BookDetailDto
 {
     public int BookId { get; set; }
@@ -38,6 +42,7 @@ public class BookDetailDto
     public List<BookAuthorFlatDto>? BookAuthors { get; set; }
 }
 
+// Tác giả “dẹt” trên detail: không lồng object Author nữa, id/name/birthYear nằm chung một lớp
 public class BookAuthorFlatDto
 {
     public int AuthorId { get; set; }
